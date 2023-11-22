@@ -1,0 +1,81 @@
+Const attachmentPath As String = "C:\VBA Test\Attachments\"
+
+Private Sub getEmailFromOutlook()
+
+    Dim outlookApp As Object, outlookNameSpace As Object, outlookSharedMailbox As Object
+    Dim folder As Object, sharedFolder As Object, sharedSubFolder As Object
+
+    Dim olFolder As String: olFolder = 6 '6 = default Inbox folder
+    Dim olSubFolder As String: olSubFolder = "" 'defines the sub folder                  ''' MUST BE CHECKED AND COMPLETED
+    Dim sharedMailbox As String
+    
+    On Error Resume Next
+    Set outlookApp = GetObject(, "Outlook.Application")
+    On Error GoTo errorHandler
+   
+    If outlookApp Is Nothing Then Set outlookApp = CreateObject("Outlook.Application")
+    
+    Select Case 4 'select the shared mailbox                                             ''' MUST BE CHECKED AND COMPLETED
+    Case 1: sharedMailbox = "Lautaro.Rotta@avnet.eu"
+    Case 2: sharedMailbox = "Avnet-EMEA-EDI-Support@avnet.eu"
+    Case 3: sharedMailbox = "IncomingMessages@avnet.eu"
+    Case 4: sharedMailbox = "SupplyChainSolutions@avnet.eu"
+    End Select
+    
+    Set outlookNameSpace = outlookApp.GetNamespace("MAPI")
+    'Set folder = outlookNameSpace.GetDefaultFolder(olFolder)
+    Set outlookSharedMailbox = outlookNameSpace.CreateRecipient(sharedMailbox) 'reaches a shared mailbox
+    Set sharedFolder = outlookNameSpace.GetSharedDefaultFolder(outlookSharedMailbox, olFolder) 'reaches the inbox folder of the chosen shared mailbox
+    'Set sharedFolder = outlookNameSpace.GetSharedDefaultFolder(outlookSharedMailbox, olFolder).Parent.Folders("_AMICON") 'reaches the a custom folder of the chosen shared mailbox
+    'Set sharedSubFolder = sharedFolder.Folders(olSubFolder) 'reaches the a subfolder of the defined folder in the shared mailbox
+    
+    Dim outlookEmail As Variant, outlookAttachment As Variant 'defined as variant in case there are not only email and attachment files in the mailbox
+    Dim newFileName As String: newFileName = attachmentPath
+    Dim emailStartDate As String: emailStartDate = ShConfig.Range("emailStartDate")       ''' MUST BE CHECKED AND COMPLETED
+    
+    For Each outlookEmail In sharedFolder.Items
+    'For Each outlookEmail In sharedSubFolder.Items 'accesses to the defined subfolder
+            
+        Debug.Print outlookEmail.Subject, outlookEmail.ReceivedTime
+            
+        If outlookEmail.ReceivedTime < ShConfig.Range("emailStartDate").Value Then
+            
+            Exit For
+        
+        ElseIf outlookEmail.Attachments.Count > 0 Then
+            
+            For Each outlookAttachment In outlookEmail.Attachments
+            
+                'Debug.Print outlookAttachment, outlookEmail.Subject, outlookEmail.ReceivedTime
+                
+                If LCase(Right(outlookAttachment, 5)) = ".xlsx" Then
+                
+                    outlookAttachment.SaveAsFile newFileName & outlookAttachment.Filename
+                    
+                End If
+                
+            Next outlookAttachment
+                
+        End If
+        
+        'If outlookEmail.ReceivedTime < ShConfig.Range("emailStartDate") Then Exit For
+        
+    Next outlookEmail
+       
+    Set outlookApp = Nothing
+    Set outlookNameSpace = Nothing
+    Set outlookSharedMailbox = Nothing
+    Set folder = Nothing
+    Set sharedFolder = Nothing
+    Set sharedSubFolder = Nothing
+    Set outlookEmail = Nothing
+    Set outlookAttachment = Nothing
+
+    Exit Sub
+    
+errorHandler:
+
+    MsgBox "The following error has occurred: " & vbCrLf & vbCrLf & "Error Number: " & Err.Number & vbCrLf & _
+    "Error Description: " & Err.Description, vbExclamation, "Error Message"
+
+End Sub
